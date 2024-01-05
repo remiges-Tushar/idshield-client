@@ -13,6 +13,7 @@ import (
 	"github.com/remiges-tech/alya/router"
 	"github.com/remiges-tech/alya/service"
 	"github.com/remiges-tech/alya/wscutils"
+	"github.com/remiges-tech/idshield/webServices/capsvc"
 	"github.com/remiges-tech/idshield/webServices/groupsvc"
 	"github.com/remiges-tech/idshield/webServices/usersvc"
 	"github.com/remiges-tech/logharbour/logharbour"
@@ -99,17 +100,26 @@ func main() {
 	// Service setup
 	s := service.NewService(r).WithDependency("gocloak", gcClient).WithLogHarbour(lh).WithDependency("realm", appConfig.Realm)
 
-	// Register a route for handling for user
+	// Register a route for handling user
 	s.RegisterRoute(http.MethodPost, "/usernew", usersvc.User_new)
 	s.RegisterRoute(http.MethodGet, "/userget", usersvc.User_get)
 	s.RegisterRoute(http.MethodGet, "/userlist", usersvc.User_list)
 	s.RegisterRoute(http.MethodPost, "/useractivate", usersvc.User_activate)
 	s.RegisterRoute(http.MethodPost, "/userdeactivate", usersvc.User_deactivate)
 
-	// Register a route for handling for group
+	// Register a route for handling group
 	s.RegisterRoute(http.MethodPost, "/groupnew", groupsvc.Group_new)
 	s.RegisterRoute(http.MethodGet, "/groupget", groupsvc.Group_get)
 	s.RegisterRoute(http.MethodPost, "/groupupdate", groupsvc.Group_update)
+
+	// Register a route for handling capabilities
+	s.RegisterRoute(http.MethodPost, "/capusergrant", capsvc.Capuser_grant)
+	s.RegisterRoute(http.MethodPost, "/capuserrevoke", capsvc.Capuser_revoke)
+	s.RegisterRoute(http.MethodGet, "/capusergetall", capsvc.Capuser_getall)
+
+	s.RegisterRoute(http.MethodPost, "/capgroupgrant", capsvc.Capgroup_grant)
+	s.RegisterRoute(http.MethodPost, "/capgrouprevoke", capsvc.Capgroup_revoke)
+	s.RegisterRoute(http.MethodGet, "/capgroupgetall", capsvc.Capgroup_getall)
 
 	// Start the service
 	if err := r.Run(":" + appConfig.AppServerPort); err != nil {
