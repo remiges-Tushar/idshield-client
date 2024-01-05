@@ -1,7 +1,6 @@
 package capsvc
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
@@ -88,7 +87,6 @@ func Capuser_grant(c *gin.Context, s *service.Service) {
 	capabilitiesToString, err := utils.CapabilitiesToString(ucap)
 	if err != nil {
 		l.Debug0().LogDebug("Error while converting Capabilities To String:", logharbour.DebugInfo{Variables: map[string]any{"error": err}})
-		fmt.Println("Error while converting Capabilities To String", err)
 		wscutils.SendErrorResponse(c, wscutils.NewErrorResponse("Error while converting Capabilities To String"))
 		return
 	}
@@ -354,7 +352,6 @@ func Capgroup_grant(c *gin.Context, s *service.Service) {
 	capabilitiesToString, err := utils.CapabilitiesToString(gcap)
 	if err != nil {
 		l.Debug0().LogDebug("Error while converting Capabilities To String:", logharbour.DebugInfo{Variables: map[string]any{"error": err}})
-		fmt.Println("Error while converting Capabilities To String", err)
 		wscutils.SendErrorResponse(c, wscutils.NewErrorResponse("Error while converting Capabilities To String"))
 		return
 	}
