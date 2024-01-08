@@ -24,6 +24,7 @@ type Scope map[string]interface{}
 type Limit map[string]interface{}
 
 type QualifiedCap struct {
+	Id    string `json:"id"`
 	Cap   string `json:"cap"`
 	Scope Scope  `json:"scope"`
 	Limit Limit  `json:"limit"`

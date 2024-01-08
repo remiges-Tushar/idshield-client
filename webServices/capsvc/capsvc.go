@@ -1,6 +1,7 @@
 package capsvc
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/Nerzal/gocloak/v13"
@@ -90,6 +91,7 @@ func Capuser_grant(c *gin.Context, s *service.Service) {
 		wscutils.SendErrorResponse(c, wscutils.NewErrorResponse("Error while converting Capabilities To String"))
 		return
 	}
+	fmt.Println("len", len(capabilitiesToString))
 
 	attr := map[string][]string{
 		"qualifiedcaps": {capabilitiesToString},
@@ -178,11 +180,23 @@ func Capuser_revoke(c *gin.Context, s *service.Service) {
 		wscutils.SendErrorResponse(c, wscutils.NewResponse("error", nil, []wscutils.ErrorMessage{wscutils.BuildErrorMessage(utils.ErrNotExist, &str)}))
 		return
 	}
+	caps := *users[0].Attributes
+	capstruct, err := utils.StringToCapabilities((caps["qualifiedcaps"])[0])
+	if err != nil {
+		l.Debug0().LogDebug("error while converting StringToCapabilities: ", logharbour.DebugInfo{Variables: map[string]any{"error": err}})
+		wscutils.SendErrorResponse(c, wscutils.NewErrorResponse("error while converting StringToCapabilities"))
+		return
+	}
 
-	// removecap(userCapRevoke.Cap)
+	atrr, err := utils.RemoveQualifiedCapability(capstruct, userCapRevoke.Cap)
+	if err != nil {
+		l.Debug0().LogDebug("error while Remove Qualified Capability: ", logharbour.DebugInfo{Variables: map[string]any{"error": err}})
+		wscutils.SendErrorResponse(c, wscutils.NewErrorResponse("error while Remove Qualified Capability"))
+		return
+	}
 
 	attr := map[string][]string{
-		"qualifiedcaps": {""},
+		"qualifiedcaps": {atrr},
 	}
 
 	keycloakUser := gocloak.User{
@@ -261,7 +275,7 @@ func Capuser_getall(c *gin.Context, s *service.Service) {
 		utils.GocloakErrorHandler(c, l, err)
 		return
 	}
-	if len(users) == 0 {
+	if len(users) == 0 || !strings.EqualFold(*users[0].Username, user) {
 		l.Log("Error while gcClient.GetUsers user doesn't exist ")
 		str := "name"
 		wscutils.SendErrorResponse(c, wscutils.NewResponse("error", nil, []wscutils.ErrorMessage{wscutils.BuildErrorMessage(utils.ErrNotExist, &str)}))
@@ -437,21 +451,42 @@ func Capgroup_revoke(c *gin.Context, s *service.Service) {
 		utils.GocloakErrorHandler(c, l, err)
 		return
 	}
-	if len(groups) == 0 {
+	if len(groups) == 0 || !strings.EqualFold(*groups[0].Name, groupCapRevoke.User) {
 		l.Log("Error while gcClient.GetGroups group doesn't exist ")
 		str := "name"
 		wscutils.SendErrorResponse(c, wscutils.NewResponse("error", nil, []wscutils.ErrorMessage{wscutils.BuildErrorMessage(utils.ErrNotExist, &str)}))
 		return
 	}
+	group, err := gcClient.GetGroup(c, token, realm, *groups[0].ID)
+	if err != nil {
+		l.Log("Error while getting group gcClient.GetGroup:")
+		str := "name"
+		wscutils.SendErrorResponse(c, wscutils.NewResponse("error", nil, []wscutils.ErrorMessage{wscutils.BuildErrorMessage(utils.ErrNotExist, &str)}))
+		return
+	}
 
-	// removecap(userCapRevoke.Cap)
+	caps := *group.Attributes
+	capstruct, err := utils.StringToCapabilities((caps["qualifiedcaps"])[0])
+	if err != nil {
+		l.Debug0().LogDebug("error while converting StringToCapabilities: ", logharbour.DebugInfo{Variables: map[string]any{"error": err}})
+		wscutils.SendErrorResponse(c, wscutils.NewErrorResponse("error while converting StringToCapabilities"))
+		return
+	}
+
+	atrr, err := utils.RemoveQualifiedCapability(capstruct, groupCapRevoke.Cap)
+	if err != nil {
+		l.Debug0().LogDebug("error while Remove Qualified Capability: ", logharbour.DebugInfo{Variables: map[string]any{"error": err}})
+		wscutils.SendErrorResponse(c, wscutils.NewErrorResponse("error while Remove Qualified Capability"))
+		return
+	}
 
 	attr := map[string][]string{
-		"qualifiedcaps": {""},
+		"qualifiedcaps": {atrr},
 	}
 
 	updatedGroup := gocloak.Group{
-		ID:         groups[0].ID,
+		ID:         group.ID,
+		Name:       group.Name,
 		Attributes: &attr,
 	}
 
@@ -504,7 +539,7 @@ func Capgroup_getall(c *gin.Context, s *service.Service) {
 		return
 	}
 
-	group, ok := c.GetQuery("group")
+	groupName, ok := c.GetQuery("group")
 	if !ok {
 		l.Log("Error while geting parma:")
 		wscutils.SendErrorResponse(c, wscutils.NewErrorResponse(utils.ErrInvalidParam))
@@ -520,24 +555,39 @@ func Capgroup_getall(c *gin.Context, s *service.Service) {
 	}
 
 	groups, err := gcClient.GetGroups(c, token, realm, gocloak.GetGroupsParams{
-		Search: &group,
+		Search: &groupName,
 	})
 	if err != nil {
 		utils.GocloakErrorHandler(c, l, err)
 		return
 	}
-	if len(groups) == 0 {
+	if len(groups) == 0 || !strings.EqualFold(*groups[0].Name, groupName) {
 		l.Log("Error while gcClient.GetUsers user doesn't exist ")
 		str := "name"
 		wscutils.SendErrorResponse(c, wscutils.NewResponse("error", nil, []wscutils.ErrorMessage{wscutils.BuildErrorMessage(utils.ErrNotExist, &str)}))
 		return
 	}
 
-	if groups[0].Attributes != nil {
-		wscutils.SendSuccessResponse(c, &wscutils.Response{Status: wscutils.SuccessStatus, Data: groups[0].Attributes, Messages: []wscutils.ErrorMessage{}})
+	group, err := gcClient.GetGroup(c, token, realm, *groups[0].ID)
+	if err != nil {
+		l.Log("Error while getting group gcClient.GetGroup:")
+		str := "name"
+		wscutils.SendErrorResponse(c, wscutils.NewResponse("error", nil, []wscutils.ErrorMessage{wscutils.BuildErrorMessage(utils.ErrNotExist, &str)}))
+		return
+	}
+
+	if group.Attributes != nil {
+		caps := *group.Attributes
+		capstruct, err := utils.StringToCapabilities(caps["qualifiedcaps"][0])
+		if err != nil {
+			l.Debug0().LogDebug("error while converting StringToCapabilities: ", logharbour.DebugInfo{Variables: map[string]any{"error": err}})
+			wscutils.SendErrorResponse(c, wscutils.NewErrorResponse("error while converting StringToCapabilities"))
+			return
+		}
+		wscutils.SendSuccessResponse(c, &wscutils.Response{Status: wscutils.SuccessStatus, Data: capstruct, Messages: []wscutils.ErrorMessage{}})
 	} else {
 		wscutils.SendSuccessResponse(c, &wscutils.Response{Status: wscutils.SuccessStatus, Data: "no group cap found", Messages: []wscutils.ErrorMessage{}})
 	}
 
-	l.Log("Finished execution of Capuser_getall()")
+	l.Log("Finished execution of Capgroup_getall()")
 }

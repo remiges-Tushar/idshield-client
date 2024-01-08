@@ -20,13 +20,13 @@ import (
 )
 
 type user struct {
-	ID         string            `json:"id,omitempty"`
-	Username   string            `json:"username" validate:"required"`
-	Email      string            `json:"email" validate:"required,email"`
-	FirstName  string            `json:"firstName,omitempty"`
-	LastName   string            `json:"lastName,omitempty"`
-	Attributes map[string]string `json:"attributes,omitempty"`
-	Enabled    bool              `json:"enabled" validate:"required"`
+	ID         *string            `json:"id,omitempty"`
+	Username   string             `json:"username" validate:"required"`
+	Email      string             `json:"email" validate:"required,email"`
+	FirstName  *string            `json:"firstName,omitempty"`
+	LastName   *string            `json:"lastName,omitempty"`
+	Attributes *map[string]string `json:"attributes,omitempty"`
+	Enabled    bool               `json:"enabled" validate:"required"`
 }
 
 type UserListRequest struct {
@@ -47,7 +47,7 @@ type UserResponse struct {
 	FirstName     *string              `json:"firstName,omitempty"`
 	LastName      *string              `json:"lastName,omitempty"`
 	EmailVerified *bool                `json:"emailVerified,omitempty"`
-	Enabled       *bool                `json:"enabled,omitempty" validate:"required"`
+	Enabled       *bool                `json:"enabled,omitempty"`
 	Attributes    *map[string][]string `json:"attributes,omitempty"`
 	CreatedAt     any                  `json:"createdat,omitempty"`
 }
@@ -109,14 +109,14 @@ func User_new(c *gin.Context, s *service.Service) {
 		return
 	}
 	attr := make(map[string][]string)
-	for key, value := range u.Attributes {
+	for key, value := range *u.Attributes {
 		attr[key] = []string{value}
 	}
 
 	keycloakUser := gocloak.User{
 		Username:   &u.Username,
-		FirstName:  &u.FirstName,
-		LastName:   &u.LastName,
+		FirstName:  u.FirstName,
+		LastName:   u.LastName,
 		Email:      &u.Email,
 		Attributes: &attr,
 		Enabled:    &u.Enabled,
